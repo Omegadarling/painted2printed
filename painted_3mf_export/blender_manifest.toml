@@ -1,0 +1,13 @@
+schema_version = "1.0.0"
+
+id = "painted_3mf_export"
+name = "Painted 3MF Export"
+tagline = "Export painted meshes to multicolor 3MF for AMS printing"
+version = "1.0.0"
+type = "add-on"
+maintainer = "Zach Shukan <zach@omegadarling.com>"
+license = ["SPDX:GPL-3.0-or-later"]
+blender_version_min = "4.2.0"
+
+[permissions]
+files = "Export 3MF files to disk"

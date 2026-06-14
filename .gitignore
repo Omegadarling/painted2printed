@@ -1,0 +1,16 @@
+# Build artifacts (the installable extension is built from source)
+*.zip
+
+# Exported / test 3MF output
+*.3mf
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Blender
+*.blend1
+*.blend2
+
+# macOS
+.DS_Store
