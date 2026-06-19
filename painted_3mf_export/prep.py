@@ -240,3 +240,64 @@ def partition_by_label(verts, tris, labels, n_colors):
         remap[used] = np.arange(len(used))
         parts.append((verts[used], remap[ktris]))
     return parts
+
+
+def _signed_volume(verts, tris):
+    v0, v1, v2 = verts[tris[:, 0]], verts[tris[:, 1]], verts[tris[:, 2]]
+    return float(np.einsum("ij,ij->i", v0, np.cross(v1, v2)).sum() / 6.0)
+
+
+def close_patch(verts, tris, thickness):
+    """Turn one color's open surface patch into a closed, watertight (hollow) shell
+    by SOLIDIFY (offset inward, keeping the visible outer surface in place), so the
+    slicer treats it as a real solid (supports outside, not inside-out). Triangle
+    winding inherited from the source is already outward; we still force outward
+    orientation per part as a guarantee. Returns (verts, tris, analysis)."""
+    me = bpy.data.meshes.new("_p3mf_part")
+    me.from_pydata(np.asarray(verts, float).tolist(), [],
+                   np.asarray(tris, np.int64).tolist())
+    me.update()
+    ob = bpy.data.objects.new("_p3mf_part", me)
+    bpy.context.scene.collection.objects.link(ob)
+    try:
+        mod = ob.modifiers.new("Solidify", "SOLIDIFY")
+        mod.thickness = max(float(thickness), 1e-3)
+        mod.offset = -1.0          # grow inward; outer (visible) surface stays put
+        mod.use_rim = True         # seal the open boundary with rim walls
+        bpy.context.view_layer.objects.active = ob
+        for o in bpy.context.selected_objects:
+            o.select_set(False)
+        ob.select_set(True)
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+        me = ob.data
+        me.calc_loop_triangles()
+        nv = len(me.vertices)
+        co = np.empty(nv * 3, dtype=np.float64)
+        me.vertices.foreach_get("co", co)
+        out_v = co.reshape(nv, 3)
+        nt = len(me.loop_triangles)
+        tv = np.empty(nt * 3, dtype=np.int64)
+        me.loop_triangles.foreach_get("vertices", tv)
+        out_t = tv.reshape(nt, 3)
+        if _signed_volume(out_v, out_t) < 0:       # guarantee outward orientation
+            out_t = out_t[:, [0, 2, 1]]
+        info = analyze(me)
+        return out_v, out_t, info
+    finally:
+        wd = ob.data
+        bpy.data.objects.remove(ob, do_unlink=True)
+        if wd.users == 0:
+            bpy.data.meshes.remove(wd)
+
+
+def partition_by_label_closed(verts, tris, labels, n_colors, thickness=1.0):
+    """Like partition_by_label, but each part is solidified into a closed watertight
+    shell. Returns a list indexed by color of (verts, tris, analysis) or None."""
+    out = []
+    for part in partition_by_label(verts, tris, labels, n_colors):
+        if part is None:
+            out.append(None)
+            continue
+        cv, ct, info = close_patch(part[0], part[1], thickness)
+        out.append((cv, ct, info))
+    return out

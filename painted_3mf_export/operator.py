@@ -18,6 +18,7 @@ class PipelineResult:
         self.n_tris = 0
         self.n_verts = 0
         self.n_parts = 0
+        self.warning = None
         self.source = ""
         self.analysis_before = None
         self.analysis_after = None
@@ -115,14 +116,29 @@ def run_pipeline(context, obj, settings, filepath):
         # ---- 6. write 3MF ------------------------------------------------ #
         title = os.path.splitext(os.path.basename(filepath))[0] or obj.name
         if settings.split_by_color:
-            parts = prep.partition_by_label(verts, tris, final_labels, len(palette))
+            closed = prep.partition_by_label_closed(
+                verts, tris, final_labels, len(palette),
+                thickness=settings.shell_thickness_mm)
+            parts_geom = [(p[0], p[1]) if p else None for p in closed]
+            # An OPEN part (boundary holes) is what causes inside-out / inside-supports;
+            # a few non-manifold pinch edges are slicer-tolerant, so only flag holes.
+            open_parts = [k + 1 for k, p in enumerate(closed)
+                          if p is not None and p[2]["boundary_edges"] > 0]
+            nonman = sum(p[2]["non_manifold_edges"] for p in closed if p is not None)
             nbytes, n_parts = threemf.export_split(
-                filepath, parts, palette,
+                filepath, parts_geom, palette,
                 title=title, write_basematerials=settings.write_basematerials)
             res.n_parts = n_parts
             res.messages.append(
-                f"Wrote {os.path.basename(filepath)} as {n_parts} co-located color "
-                f"parts ({res.n_tris} tris, {len(palette)} colors)")
+                f"Wrote {os.path.basename(filepath)} as {n_parts} sealed, co-located "
+                f"color parts ({len(palette)} colors)")
+            if open_parts:
+                res.warning = (f"{len(open_parts)} part(s) still have open holes "
+                               f"(colors {open_parts}); they may slice oddly")
+                res.messages.append(res.warning)
+            elif nonman:
+                res.messages.append(f"note: {nonman} non-manifold edge(s) across parts "
+                                    "(minor; slicers auto-handle)")
         else:
             nbytes = threemf.export(
                 filepath, verts, tris, final_labels, palette,
@@ -198,6 +214,8 @@ class EXPORT_OT_painted_3mf(bpy.types.Operator, ExportHelper):
             traceback.print_exc()
             self.report({"ERROR"}, f"3MF export failed: {exc}")
             return {"CANCELLED"}
+        if res.warning:
+            self.report({"WARNING"}, res.warning)
         extra = f", {res.n_parts} parts" if res.n_parts else ""
         self.report({"INFO"},
                     f"Exported {res.n_tris} tris, {len(res.palette_srgb)} colors"

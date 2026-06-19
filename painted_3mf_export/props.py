@@ -68,10 +68,18 @@ class Painted3MFSettings(PropertyGroup):
 
     split_by_color: BoolProperty(
         name="Split Into Parts by Color",
-        description="Export each color as its own co-located part (one object with N parts) "
-                    "instead of a single painted mesh. Lets you re-assign each part's filament "
-                    "in the slicer when the colors don't match what's loaded in the printer",
+        description="Export each color as its own closed (hollow), co-located part — one object "
+                    "with N watertight parts — instead of a single painted mesh. Each part is "
+                    "independently filament-assignable in Bambu Studio AND OrcaSlicer. "
+                    "Tip: for Bambu Studio you can instead leave this OFF and remap each color "
+                    "to a loaded filament in Bambu's import-color dialog",
         default=False,
+    )
+    shell_thickness_mm: FloatProperty(
+        name="Part Wall (mm)",
+        description="Wall thickness used to seal each split part into a closed hollow shell "
+                    "(parts are sealed so the slicer supports them correctly)",
+        default=1.0, min=0.1, soft_max=5.0,
     )
     write_basematerials: BoolProperty(
         name="Write Fallback Materials",

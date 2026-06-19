@@ -65,6 +65,14 @@ class VIEW3D_PT_painted_3mf(bpy.types.Panel):
         layout.label(text="Output:", icon="FILE_3D")
         col = layout.column(align=True)
         col.prop(s, "split_by_color")
+        if s.split_by_color:
+            sub = col.column(align=True)
+            sub.prop(s, "shell_thickness_mm")
+        else:
+            hint = col.column(align=True)
+            hint.scale_y = 0.7
+            hint.label(text="Single object: remap colors in", icon="INFO")
+            hint.label(text="Bambu's import-color dialog.")
         col.prop(s, "write_basematerials")
 
         layout.separator()

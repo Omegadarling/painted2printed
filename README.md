@@ -66,9 +66,20 @@ remap colors→filaments if needed. With **Split Into Parts by Color** enabled, 
 In the slicer each part shows up separately, so you can **assign each part to any
 filament / AMS slot by hand** — handy when your quantized colors don't match the
 filaments actually loaded in the printer. All parts stay perfectly aligned (same
-location), so together they reproduce the model. Note that each part is the
-surface region of that color (not an independent solid); the parts are meant to
-be printed together as one object.
+location), so together they reproduce the model.
+
+Each part's open color-seam boundaries are **capped into a closed, watertight
+shell**, so the slicer treats it as a real solid — supports go on the outside and
+nothing renders inside-out. The parts are **hollow** (sealed outer shell with no
+solid interior); set wall/infill per part in the slicer as usual. If a part's
+seam can't be fully sealed it's reported as a warning rather than silently
+exported broken.
+
+> **Bambu Studio tip:** you may not need this at all. If you import the normal
+> (non-split) export, Bambu Studio 2.5+ shows a **"Standard 3mf Import color"**
+> dialog that lets you remap each model color to any loaded filament — same goal,
+> no geometry split. Splitting is mainly useful for **OrcaSlicer** (which ignores
+> per-triangle 3MF colors) or when you want separately re-colorable parts.
 
 ## Pipeline
 

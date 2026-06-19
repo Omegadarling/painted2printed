@@ -30,7 +30,7 @@ import numpy as np
 
 CORE_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
 MAT_NS = "http://schemas.microsoft.com/3dmanufacturing/material/2015/02"
-APPLICATION = "Painted3MFExport-1.1.0"   # generic on purpose; do NOT use "BambuStudio-"
+APPLICATION = "Painted3MFExport-1.1.1"   # generic on purpose; do NOT use "BambuStudio-"
 
 # Resource ids share one namespace; keep distinct.
 CG_ID, BM_ID, OBJ_ID = 1, 2, 3
