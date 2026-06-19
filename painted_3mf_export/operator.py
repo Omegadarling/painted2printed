@@ -17,6 +17,7 @@ class PipelineResult:
         self.palette_srgb = None
         self.n_tris = 0
         self.n_verts = 0
+        self.n_parts = 0
         self.source = ""
         self.analysis_before = None
         self.analysis_after = None
@@ -113,11 +114,21 @@ def run_pipeline(context, obj, settings, filepath):
 
         # ---- 6. write 3MF ------------------------------------------------ #
         title = os.path.splitext(os.path.basename(filepath))[0] or obj.name
-        nbytes = threemf.export(
-            filepath, verts, tris, final_labels, palette,
-            title=title, write_basematerials=settings.write_basematerials)
-        res.messages.append(f"Wrote {os.path.basename(filepath)} "
-                            f"({res.n_tris} tris, {len(palette)} colors, {nbytes} XML bytes)")
+        if settings.split_by_color:
+            parts = prep.partition_by_label(verts, tris, final_labels, len(palette))
+            nbytes, n_parts = threemf.export_split(
+                filepath, parts, palette,
+                title=title, write_basematerials=settings.write_basematerials)
+            res.n_parts = n_parts
+            res.messages.append(
+                f"Wrote {os.path.basename(filepath)} as {n_parts} co-located color "
+                f"parts ({res.n_tris} tris, {len(palette)} colors)")
+        else:
+            nbytes = threemf.export(
+                filepath, verts, tris, final_labels, palette,
+                title=title, write_basematerials=settings.write_basematerials)
+            res.messages.append(f"Wrote {os.path.basename(filepath)} "
+                                f"({res.n_tris} tris, {len(palette)} colors)")
         return res
     finally:
         prep.remove_bake_attr(work.data)
@@ -187,9 +198,10 @@ class EXPORT_OT_painted_3mf(bpy.types.Operator, ExportHelper):
             traceback.print_exc()
             self.report({"ERROR"}, f"3MF export failed: {exc}")
             return {"CANCELLED"}
+        extra = f", {res.n_parts} parts" if res.n_parts else ""
         self.report({"INFO"},
-                    f"Exported {res.n_tris} tris, {len(res.palette_srgb)} colors "
-                    f"({res.source})")
+                    f"Exported {res.n_tris} tris, {len(res.palette_srgb)} colors"
+                    f"{extra} ({res.source})")
         return {"FINISHED"}
 
 

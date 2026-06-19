@@ -219,3 +219,24 @@ def extract_geometry(obj):
     e2 = world[tris[:, 2]] - world[tris[:, 0]]
     keep = np.linalg.norm(np.cross(e1, e2), axis=1) > 1e-9
     return world, tris[keep], keep
+
+
+def partition_by_label(verts, tris, labels, n_colors):
+    """Split geometry into one (verts, tris) chunk per color, each with its own
+    re-indexed vertex subset but the SAME world coordinates (parts stay co-located).
+    Returns a list indexed by color (None for colors that own no triangles)."""
+    verts = np.asarray(verts)
+    tris = np.asarray(tris, np.int64)
+    labels = np.asarray(labels, np.int64)
+    parts = []
+    for k in range(n_colors):
+        mask = labels == k
+        if not mask.any():
+            parts.append(None)
+            continue
+        ktris = tris[mask]
+        used = np.unique(ktris)
+        remap = np.full(verts.shape[0], -1, dtype=np.int64)
+        remap[used] = np.arange(len(used))
+        parts.append((verts[used], remap[ktris]))
+    return parts

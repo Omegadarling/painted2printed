@@ -66,6 +66,13 @@ class Painted3MFSettings(PropertyGroup):
         default=0.5, min=0.01, soft_max=5.0,
     )
 
+    split_by_color: BoolProperty(
+        name="Split Into Parts by Color",
+        description="Export each color as its own co-located part (one object with N parts) "
+                    "instead of a single painted mesh. Lets you re-assign each part's filament "
+                    "in the slicer when the colors don't match what's loaded in the printer",
+        default=False,
+    )
     write_basematerials: BoolProperty(
         name="Write Fallback Materials",
         description="Also emit <basematerials> for materials-extension-aware non-Bambu "

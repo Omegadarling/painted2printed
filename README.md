@@ -42,6 +42,7 @@ object is never modified (all work happens on a throwaway copy).
 | **Validate / Repair Mesh** | Weld doubles, remove degenerates, fill holes, recalc normals (watertight) |
 | **Scale to Size (mm)** | Scale longest dimension to the target mm |
 | **Remesh for Color Detail** | Voxel‑remesh for crisper color borders (color is sampled *before* remesh and re‑transferred) |
+| **Split Into Parts by Color** | Export each color as its own co‑located part instead of one painted mesh (see below) |
 | **Write Fallback Materials** | Also emit `<basematerials>` for materials‑aware non‑Bambu slicers |
 
 ## How the colors reach Bambu (important)
@@ -54,6 +55,20 @@ as an `m:colorgroup` (and keeps `<basematerials>` only as an inert,
 non‑Bambu‑relevant extra). It also keeps the `Application` metadata **generic** —
 setting it to `BambuStudio-*`/`OrcaSlicer-*` would switch the loader into native
 project mode and **disable** this color‑import path.
+
+## Split into parts by color
+
+By default the export is **one painted mesh** — Bambu paints the surface and you
+remap colors→filaments if needed. With **Split Into Parts by Color** enabled, the
+3MF instead contains **one object made of N co-located parts**, one per color
+(a 3MF assembly with a `<component>` per color at the identity transform).
+
+In the slicer each part shows up separately, so you can **assign each part to any
+filament / AMS slot by hand** — handy when your quantized colors don't match the
+filaments actually loaded in the printer. All parts stay perfectly aligned (same
+location), so together they reproduce the model. Note that each part is the
+surface region of that color (not an independent solid); the parts are meant to
+be printed together as one object.
 
 ## Pipeline
 

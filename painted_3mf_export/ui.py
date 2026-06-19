@@ -62,7 +62,10 @@ class VIEW3D_PT_painted_3mf(bpy.types.Panel):
         sub.prop(s, "voxel_size_mm")
 
         layout.separator()
-        layout.prop(s, "write_basematerials")
+        layout.label(text="Output:", icon="FILE_3D")
+        col = layout.column(align=True)
+        col.prop(s, "split_by_color")
+        col.prop(s, "write_basematerials")
 
         layout.separator()
         row = layout.row()

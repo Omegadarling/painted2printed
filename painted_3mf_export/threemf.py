@@ -30,10 +30,12 @@ import numpy as np
 
 CORE_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
 MAT_NS = "http://schemas.microsoft.com/3dmanufacturing/material/2015/02"
-APPLICATION = "Painted3MFExport-1.0.0"   # generic on purpose; do NOT use "BambuStudio-"
+APPLICATION = "Painted3MFExport-1.1.0"   # generic on purpose; do NOT use "BambuStudio-"
 
 # Resource ids share one namespace; keep distinct.
 CG_ID, BM_ID, OBJ_ID = 1, 2, 3
+PART_ID_BASE = 10          # split-mode child object ids: 10, 11, 12, ...
+IDENTITY = "1 0 0 0 1 0 0 0 1 0 0 0"
 
 CONTENT_TYPES = (
     b'<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -66,6 +68,37 @@ def _esc(s):
             .replace(">", "&gt;").replace('"', "&quot;"))
 
 
+def _verts_block(verts):
+    return ('<vertices>' + "".join(
+        '<vertex x="%.6g" y="%.6g" z="%.6g"/>' % (v[0], v[1], v[2]) for v in verts)
+        + '</vertices>')
+
+
+def _tris_block(tris, labels):
+    """``labels`` is an int (uniform color for every triangle) or a per-triangle array."""
+    if np.isscalar(labels):
+        lab = int(labels)
+        body = "".join(
+            '<triangle v1="%d" v2="%d" v3="%d" pid="%d" p1="%d" p2="%d" p3="%d"/>'
+            % (t[0], t[1], t[2], CG_ID, lab, lab, lab) for t in tris)
+    else:
+        body = "".join(
+            '<triangle v1="%d" v2="%d" v3="%d" pid="%d" p1="%d" p2="%d" p3="%d"/>'
+            % (t[0], t[1], t[2], CG_ID, lab, lab, lab) for t, lab in zip(tris, labels))
+    return '<triangles>' + body + '</triangles>'
+
+
+def _colors_block(out, palette_srgb, write_basematerials):
+    out.append(f'<m:colorgroup id="{CG_ID}">')
+    out.extend(f'<m:color color="{srgb_to_hex(c)}"/>' for c in palette_srgb)
+    out.append('</m:colorgroup>')
+    if write_basematerials:
+        out.append(f'<basematerials id="{BM_ID}">')
+        out.extend(f'<base name="Filament {i + 1}" displaycolor="{srgb_to_hex(c, 1.0)}"/>'
+                   for i, c in enumerate(palette_srgb))
+        out.append('</basematerials>')
+
+
 def build_model_xml(verts, tris, tri_labels, palette_srgb,
                     title="painted_model", write_basematerials=True):
     """Return the 3dmodel.model document as bytes."""
@@ -86,42 +119,66 @@ def build_model_xml(verts, tris, tri_labels, palette_srgb,
            f'<metadata name="Title">{_esc(title)}</metadata>',
            '<resources>']
 
-    # Load-bearing color group (Bambu/Orca AMS).
-    out.append(f'<m:colorgroup id="{CG_ID}">')
-    out.extend(f'<m:color color="{srgb_to_hex(c)}"/>' for c in palette_srgb)
-    out.append('</m:colorgroup>')
+    # Load-bearing color group (Bambu/Orca AMS) + inert basematerials fallback.
+    _colors_block(out, palette_srgb, write_basematerials)
 
-    # Base materials block (unreferenced; only meaningful to materials-extension-
-    # aware non-Bambu slicers). NOT a fallback for core-only viewers, which must
-    # refuse the file due to requiredextensions="m".
-    if write_basematerials:
-        out.append(f'<basematerials id="{BM_ID}">')
-        out.extend(
-            f'<base name="Filament {i + 1}" displaycolor="{srgb_to_hex(c, 1.0)}"/>'
-            for i, c in enumerate(palette_srgb))
-        out.append('</basematerials>')
-
-    # Object: default property -> colorgroup index 0; triangles override.
+    # Single object: default property -> colorgroup index 0; triangles override.
     out.append(f'<object id="{OBJ_ID}" type="model" pid="{CG_ID}" pindex="0"><mesh>')
-
-    out.append('<vertices>')
-    out.append("".join(
-        '<vertex x="%.6g" y="%.6g" z="%.6g"/>' % (v[0], v[1], v[2])
-        for v in verts))
-    out.append('</vertices>')
-
-    out.append('<triangles>')
-    out.append("".join(
-        '<triangle v1="%d" v2="%d" v3="%d" pid="%d" p1="%d" p2="%d" p3="%d"/>'
-        % (t[0], t[1], t[2], CG_ID, L, L, L)
-        for t, L in zip(tris, tri_labels)))
-    out.append('</triangles>')
-
+    out.append(_verts_block(verts))
+    out.append(_tris_block(tris, tri_labels))
     out.append('</mesh></object>')
     out.append('</resources>')
     out.append('<build>'
                f'<item objectid="{OBJ_ID}" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>'
                '</build>')
+    out.append('</model>')
+    return "".join(out).encode("utf-8")
+
+
+def build_model_xml_split(parts, palette_srgb, title="painted_model",
+                          write_basematerials=True):
+    """Build a 3MF where each color is its OWN co-located part.
+
+    ``parts`` is a list indexed by color k -> (verts, tris) of just that color's
+    geometry, or None for colors with no triangles. Each non-empty color becomes a
+    child <object> (object-level + per-triangle color k), and all children are
+    grouped under a single assembly <object> via <component>s at the identity
+    transform. The slicer therefore shows ONE object made of N parts, all at the
+    same location, each independently re-assignable to any filament/AMS slot.
+    """
+    palette_srgb = np.asarray(palette_srgb, float)
+    out = ['<?xml version="1.0" encoding="UTF-8"?>\n',
+           '<model unit="millimeter" xml:lang="en-US" '
+           f'xmlns="{CORE_NS}" xmlns:m="{MAT_NS}" requiredextensions="m">',
+           f'<metadata name="Application">{APPLICATION}</metadata>',
+           f'<metadata name="Title">{_esc(title)}</metadata>',
+           '<resources>']
+    _colors_block(out, palette_srgb, write_basematerials)
+
+    child_ids = []
+    for k, part in enumerate(parts):
+        if part is None:
+            continue
+        verts, tris = np.asarray(part[0], float), np.asarray(part[1], np.int64)
+        if len(verts) and not np.isfinite(verts).all():
+            raise ValueError("Non-finite vertex coordinate(s); cannot write valid 3MF")
+        oid = PART_ID_BASE + k
+        child_ids.append(oid)
+        out.append(f'<object id="{oid}" type="model" name="Color {k + 1}" '
+                   f'pid="{CG_ID}" pindex="{k}"><mesh>')
+        out.append(_verts_block(verts))
+        out.append(_tris_block(tris, k))
+        out.append('</mesh></object>')
+
+    if not child_ids:
+        raise ValueError("No non-empty color parts to export")
+
+    # Assembly object: co-locate every part at the identity transform.
+    out.append(f'<object id="{OBJ_ID}" type="model"><components>')
+    out.extend(f'<component objectid="{cid}" transform="{IDENTITY}"/>' for cid in child_ids)
+    out.append('</components></object>')
+    out.append('</resources>')
+    out.append(f'<build><item objectid="{OBJ_ID}" transform="{IDENTITY}"/></build>')
     out.append('</model>')
     return "".join(out).encode("utf-8")
 
@@ -152,3 +209,12 @@ def export(filepath, verts, tris, tri_labels, palette_srgb,
                           title=title, write_basematerials=write_basematerials)
     write_3mf(filepath, xml)
     return len(xml)
+
+
+def export_split(filepath, parts, palette_srgb,
+                 title="painted_model", write_basematerials=True):
+    xml = build_model_xml_split(parts, palette_srgb,
+                                title=title, write_basematerials=write_basematerials)
+    write_3mf(filepath, xml)
+    n_parts = sum(1 for p in parts if p is not None)
+    return len(xml), n_parts
