@@ -7,6 +7,10 @@ Converts a **painted 3D model** (image texture *or* vertex colors) into a
 It reduces the model's colors to a chosen number of filaments (k‑means), assigns
 each face one of those colors, runs optional print‑prep, and writes a 3MF.
 
+![Painted 3MF Export carries a painted Blender model into a filament-ready multicolor 3MF workflow](docs/images/painted-to-printed.png)
+
+*Paint in Blender, quantize to the filaments you actually have, and export colors that Bambu Studio or OrcaSlicer can use.*
+
 ---
 
 ## Install
