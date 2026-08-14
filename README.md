@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/icon.webp" width="144" alt="Painted 3MF Export app icon">
+</p>
+
 # Painted 3MF Export — Blender add-on
 
 Converts a **painted 3D model** (image texture *or* vertex colors) into a
