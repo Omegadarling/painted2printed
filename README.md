@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/icon.webp" width="144" alt="Painted 3MF Export app icon">
+  <img src="docs/images/icon.webp" width="200" alt="Painted 3MF Export app icon showing a four-filament printed model">
 </p>
 
 # Painted 3MF Export — Blender add-on
@@ -11,9 +11,11 @@ Converts a **painted 3D model** (image texture *or* vertex colors) into a
 It reduces the model's colors to a chosen number of filaments (k‑means), assigns
 each face one of those colors, runs optional print‑prep, and writes a 3MF.
 
-![Painted 3MF Export carries a painted Blender model into a filament-ready multicolor 3MF workflow](docs/images/painted-to-printed.png)
+## In Blender
 
-*Paint in Blender, quantize to the filaments you actually have, and export colors that Bambu Studio or OrcaSlicer can use.*
+![Blender 5.1 showing a four-color painted mesh beside the Painted to 3MF panel configured for four filaments, perceptual color quantization, print repair, scaling, color-part splitting, and 3MF export](docs/images/blender-screenshot.png)
+
+*Actual Blender capture: the add-on detects the mesh's color attribute, reduces it to four filament colors, prepares it at print scale, and offers the real **Export 3MF** action.*
 
 ---
 
