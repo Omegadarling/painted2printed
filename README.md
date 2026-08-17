@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/icon.webp" width="200" alt="Painted 3MF Export app icon showing a four-filament printed model">
+  <img src="https://raw.githubusercontent.com/Omegadarling/painted2printed/main/docs/images/icon.webp" width="200" alt="Painted 3MF Export app icon showing a four-filament printed model">
 </p>
 
 # Painted 3MF Export — Blender add-on
@@ -13,7 +13,7 @@ each face one of those colors, runs optional print‑prep, and writes a 3MF.
 
 ## In Blender
 
-![Blender 5.1 showing a four-color painted mesh beside the Painted to 3MF panel configured for four filaments, perceptual color quantization, print repair, scaling, color-part splitting, and 3MF export](docs/images/blender-screenshot.png)
+![Blender 5.1 showing a four-color painted mesh beside the Painted to 3MF panel configured for four filaments, perceptual color quantization, print repair, scaling, color-part splitting, and 3MF export](https://raw.githubusercontent.com/Omegadarling/painted2printed/main/docs/images/blender-screenshot.png)
 
 *Actual Blender capture: the add-on detects the mesh's color attribute, reduces it to four filament colors, prepares it at print scale, and offers the real **Export 3MF** action.*
 
